@@ -1,220 +1,173 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 local useDrawing = (type(Drawing) == "table")
 
+-- Configurações (Mantendo sua base e adicionando novas)
 local Settings = {
-    HitboxEnabled = false,
-    HitboxSize = 10,
-    AimbotEnabled = false,
-    AimbotSmoothing = 0.25,
-    AimbotMaxDistance = 350,
-    FOV = 120,
-    ESPEnabled = true,
-    ESPNames = true,
-    ESPLines = true,
-    ESPRainbow = true,
-    WalkSpeed = 16,
-    FlyEnabled = false,
-    FlySpeed = 50
+    HitboxEnabled = false, HitboxSize = 10,
+    AimbotEnabled = false, AimbotSmoothing = 0.2, AimbotMaxDistance = 350, FOV = 120,
+    ESPEnabled = false, ESPNames = true, ESPLines = true, ESPRainbow = true,
+    Speed = 16, FlyEnabled = false, FlySpeed = 50
 }
 
--- UI Principal
-local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
 ScreenGui.ResetOnSpawn = false
 
+-- Botão de Abrir Móvel (Melhorado)
 local OpenBtn = Instance.new("ImageButton", ScreenGui)
-OpenBtn.Size = UDim2.fromOffset(56,56)
-OpenBtn.Position = UDim2.new(0.05,0,0.1,0)
-OpenBtn.BackgroundColor3 = Color3.fromRGB(32,32,32)
-OpenBtn.Image = "rbxassetid://76223376149447"
-OpenBtn.ScaleType = Enum.ScaleType.Fit
-local oc = Instance.new("UICorner", OpenBtn); oc.CornerRadius = UDim.new(1,0)
+OpenBtn.Size = UDim2.fromOffset(55, 55)
+OpenBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+OpenBtn.Image = "rbxassetid://6031068426"
+local btnCorner = Instance.new("UICorner", OpenBtn); btnCorner.CornerRadius = UDim.new(1, 0)
+local btnStroke = Instance.new("UIStroke", OpenBtn); btnStroke.Color = Color3.fromRGB(0, 150, 255); btnStroke.Thickness = 2
 
--- Arrastar botão de abrir (Mobile/PC)
+-- Arrastar Botão
 do
-    local dragging, dragStart, startPos, activeTouch
-    OpenBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = OpenBtn.Position
-            if input.UserInputType == Enum.UserInputType.Touch then activeTouch = input.TouchId end
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false; activeTouch = nil end end)
+    local dragging, dragStart, startPos
+    OpenBtn.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = i.Position; startPos = OpenBtn.Position
+            i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
         end
     end)
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or (input.UserInputType == Enum.UserInputType.Touch and input.TouchId == activeTouch)) then
-            local delta = input.Position - dragStart
+    UIS.InputChanged:Connect(function(i)
+        if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+            local delta = i.Position - dragStart
             OpenBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 end
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.fromOffset(400, 300)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.AnchorPoint = Vector2.new(0.5,0.5)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18,18,18)
-MainFrame.Visible = false
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0,10)
+-- Janela Principal (Design Moderno)
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.fromOffset(400, 300)
+Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.Visible = false
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
--- Sistema de Abas
-local TabButtons = Instance.new("Frame", MainFrame)
-TabButtons.Size = UDim2.new(1, 0, 0, 35)
-TabButtons.BackgroundColor3 = Color3.fromRGB(25,25,25)
+local TabHolder = Instance.new("Frame", Main)
+TabHolder.Size = UDim2.new(0, 100, 1, 0)
+TabHolder.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", TabHolder)
 
-local Container = Instance.new("Frame", MainFrame)
-Container.Size = UDim2.new(1, 0, 1, -35)
-Container.Position = UDim2.new(0, 0, 0, 35)
+local Container = Instance.new("Frame", Main)
+Container.Size = UDim2.new(1, -110, 1, -10)
+Container.Position = UDim2.new(0, 105, 0, 5)
 Container.BackgroundTransparency = 1
 
-local Tabs = {Main = Instance.new("ScrollingFrame", Container), ESPs = Instance.new("ScrollingFrame", Container), Troll = Instance.new("ScrollingFrame", Container)}
-for _, t in pairs(Tabs) do
-    t.Size = UDim2.new(1,0,1,0); t.BackgroundTransparency = 1; t.Visible = false; t.ScrollBarThickness = 2
-end
-Tabs.Main.Visible = true
-
-local function createTabBtn(name, pos)
-    local b = Instance.new("TextButton", TabButtons)
-    b.Size = UDim2.new(0.33, 0, 1, 0)
-    b.Position = UDim2.new(pos, 0, 0, 0)
-    b.Text = name; b.BackgroundColor3 = Color3.fromRGB(30,30,30); b.TextColor3 = Color3.new(1,1,1)
-    b.MouseButton1Click:Connect(function()
-        for _, t in pairs(Tabs) do t.Visible = false end
-        Tabs[name].Visible = true
-    end)
-end
-createTabBtn("Main", 0); createTabBtn("ESPs", 0.33); createTabBtn("Troll", 0.66)
-
-OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
-local function newBtn(parent, text, y, callback)
-    local B = Instance.new("TextButton", parent)
-    B.Size = UDim2.new(0.9, 0, 0, 35)
-    B.Position = UDim2.new(0.05, 0, 0, y)
-    B.BackgroundColor3 = Color3.fromRGB(45,45,45)
-    B.Text = text; B.TextColor3 = Color3.new(1,1,1); B.Font = "GothamBold"
-    Instance.new("UICorner", B)
-    B.MouseButton1Click:Connect(callback)
-    return B
-end
-
-local function newSlider(parent, text, y, min, max, default, callback)
-    local label = Instance.new("TextLabel", parent)
-    label.Size = UDim2.new(0.9,0,0,20); label.Position = UDim2.new(0.05,0,0,y)
-    label.Text = text .. ": " .. default; label.BackgroundTransparency = 1; label.TextColor3 = Color3.new(1,1,1)
-    local sFrame = Instance.new("Frame", parent)
-    sFrame.Size = UDim2.new(0.9,0,0,10); sFrame.Position = UDim2.new(0.05,0,0,y+25); sFrame.BackgroundColor3 = Color3.new(0.2,0.2,0.2)
-    local knob = Instance.new("Frame", sFrame)
-    knob.Size = UDim2.new(0, 15, 1, 4); knob.Position = UDim2.new((default-min)/(max-min), -7, 0, -2); knob.BackgroundColor3 = Color3.new(0,0.6,1)
+OpenBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+local Tabs = {}
+local function CreateTab(name, order)
+    local frame = Instance.new("ScrollingFrame", Container)
+    frame.Size = UDim2.new(1, 0, 1, 0); frame.BackgroundTransparency = 1; frame.Visible = (order == 1)
+    frame.CanvasSize = UDim2.new(0, 0, 1.5, 0); frame.ScrollBarThickness = 2
+    Tabs[name] = frame
     
-    knob.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local move; move = UIS.InputChanged:Connect(function(i)
-                if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
-                    local percent = math.clamp((i.Position.X - sFrame.AbsolutePosition.X) / sFrame.AbsoluteSize.X, 0, 1)
-                    knob.Position = UDim2.new(percent, -7, 0, -2)
-                    local val = math.floor(min + (max - min) * percent)
-                    label.Text = text .. ": " .. val
-                    callback(val)
-                end
-            end)
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then move:Disconnect() end end)
-        end
+    local btn = Instance.new("TextButton", TabHolder)
+    btn.Size = UDim2.new(1, -10, 0, 35); btn.Position = UDim2.new(0, 5, 0, (order-1)*40 + 10)
+    btn.Text = name; btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = "GothamBold"; Instance.new("UICorner", btn)
+    
+    btn.MouseButton1Click:Connect(function()
+        for _, t in pairs(Tabs) do t.Visible = false end
+        frame.Visible = true
     end)
-    return y + 50
 end
 
--- ABA MAIN
-local yM = 10
-local aimT = newBtn(Tabs.Main, "Aimbot: OFF", yM, function()
-    Settings.AimbotEnabled = not Settings.AimbotEnabled
-    Tabs.Main:FindFirstChild("Aimbot: OFF" or "Aimbot: ON").Text = "Aimbot: "..(Settings.AimbotEnabled and "ON" or "OFF")
-end); yM = yM + 45
-yM = newSlider(Tabs.Main, "FOV Radius", yM, 10, 500, Settings.FOV, function(v) Settings.FOV = v end)
-local hitT = newBtn(Tabs.Main, "Hitbox: OFF", yM, function()
-    Settings.HitboxEnabled = not Settings.HitboxEnabled
-    Tabs.Main:FindFirstChild("Hitbox: OFF" or "Hitbox: ON").Text = "Hitbox: "..(Settings.HitboxEnabled and "ON" or "OFF")
-end); yM = yM + 45
-yM = newSlider(Tabs.Main, "Hitbox Size", yM, 2, 50, Settings.HitboxSize, function(v) Settings.HitboxSize = v end)
+local function NewToggle(parent, text, settingKey)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    btn.Text = text .. ": OFF"; btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = "GothamBold"
+    Instance.new("UICorner", btn)
+    
+    local function update()
+        local state = Settings[settingKey]
+        btn.Text = text .. (state and ": ON" or ": OFF")
+        btn.BackgroundColor3 = state and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    end
+    
+    btn.MouseButton1Click:Connect(function()
+        Settings[settingKey] = not Settings[settingKey]
+        update()
+    end)
+    Instance.new("UIListLayout", parent).Padding = UDim.new(0, 5)
+    return btn
+end
 
--- ABA ESPS
-local yE = 10
-newBtn(Tabs.ESPs, "ESP Master: ON", yE, function() Settings.ESPEnabled = not Settings.ESPEnabled end); yE = yE + 40
-newBtn(Tabs.ESPs, "Names", yE, function() Settings.ESPNames = not Settings.ESPNames end); yE = yE + 40
-newBtn(Tabs.ESPs, "Lines", yE, function() Settings.ESPLines = not Settings.ESPLines end); yE = yE + 40
-newBtn(Tabs.ESPs, "Rainbow", yE, function() Settings.ESPRainbow = not Settings.ESPRainbow end)
+CreateTab("Main", 1); CreateTab("ESPs", 2); CreateTab("Troll", 3)
 
--- ABA TROLL
-local yT = 10
-yT = newSlider(Tabs.Troll, "WalkSpeed", yT, 16, 200, 16, function(v) Settings.WalkSpeed = v end)
-newBtn(Tabs.Troll, "Toggle Fly", yT, function() Settings.FlyEnabled = not Settings.FlyEnabled end); yT = yT + 40
-yT = newSlider(Tabs.Troll, "Fly Speed", yT, 10, 300, 50, function(v) Settings.FlySpeed = v end)
-local function getRainbow() return Color3.fromHSV((tick() % 5) / 5, 1, 1) end
+-- Adicionando Controles
+NewToggle(Tabs.Main, "Aimbot", "AimbotEnabled")
+NewToggle(Tabs.Main, "Hitbox Expansion", "HitboxEnabled")
+NewToggle(Tabs.ESPs, "ESP Master", "ESPEnabled")
+NewToggle(Tabs.ESPs, "Names", "ESPNames")
+NewToggle(Tabs.ESPs, "Lines", "ESPLines")
+NewToggle(Tabs.Troll, "Fly Mode", "FlyEnabled")
+-- Função de auxílio: RGB
+local function getRGB() return Color3.fromHSV((tick() % 5) / 5, 1, 1) end
 
--- Sistema de Fly
+-- Loop Principal (Hitbox e Fly)
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = Settings.WalkSpeed
-        
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if Settings.FlyEnabled and root then
-            root.Velocity = Vector3.new(0,0.1,0)
-            local moveDir = char.Humanoid.MoveDirection
-            root.CFrame = root.CFrame + (moveDir * Settings.FlySpeed * 0.1)
-        end
-    end
-end)
+    local rainbow = getRGB()
 
--- Aimbot e Hitbox Loop
-RunService.RenderStepped:Connect(function()
-    local rainbow = getRainbow()
-    
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = plr.Character.HumanoidRootPart
-            
-            -- Hitbox Visual RGB
-            local visual = plr.Character:FindFirstChild("HitboxVisual")
-            if Settings.HitboxEnabled then
+    -- HITBOX VISUAL (Apenas para você)
+    if Settings.HitboxEnabled then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = plr.Character.HumanoidRootPart
+                local visual = plr.Character:FindFirstChild("HitboxVisual")
                 if not visual then
-                    visual = Instance.new("Part", plr.Character)
-                    visual.Name = "HitboxVisual"
-                    visual.CastShadow = false
-                    visual.CanCollide = false
-                    visual.Anchored = true
-                    visual.Transparency = 0.5
-                    visual.Material = Enum.Material.Neon
+                    visual = Instance.new("BoxHandleAdornment", plr.Character)
+                    visual.Name = "HitboxVisual"; visual.AlwaysOnTop = true; visual.ZIndex = 10
+                    visual.Adornee = hrp; visual.Transparency = 0.5
                 end
-                visual.Color = rainbow
+                visual.Color3 = rainbow
                 visual.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
-                visual.CFrame = hrp.CFrame
-            elseif visual then 
-                visual:Destroy() 
+                hrp.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
+                hrp.CanCollide = false
             end
         end
     end
+
+    -- FLY ANALÓGICO
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local hrp = char.HumanoidRootPart
+        if Settings.FlyEnabled then
+            local moveDir = char.Humanoid.MoveDirection
+            local look = Camera.CFrame.LookVector
+            local right = Camera.CFrame.RightVector
+            hrp.Velocity = (look * moveDir.Z * Settings.FlySpeed) + (right * moveDir.X * Settings.FlySpeed) + Vector3.new(0, 0.5, 0)
+        end
+    end
 end)
 
--- ESP Drawing Fix
+-- ESP CORRIGIDO (Agora realmente desliga se o botão for OFF)
 local espTable = {}
-local function makeESP(plr)
+local function createESP(plr)
+    if not useDrawing then return end
     local o = {line = Drawing.new("Line"), text = Drawing.new("Text")}
     o.line.Thickness = 1; o.text.Size = 14; o.text.Center = true; o.text.Outline = true
     espTable[plr] = o
 end
-Players.PlayerAdded:Connect(makeESP)
-for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then makeESP(p) end end
+
+Players.PlayerAdded:Connect(createESP)
+for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then createESP(p) end end
 
 RunService.RenderStepped:Connect(function()
-    local rainbow = getRainbow()
+    local color = Settings.ESPRainbow and getRGB() or Color3.new(1,1,1)
     for plr, o in pairs(espTable) do
         local char = plr.Character
-        if Settings.ESPEnabled and char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+        -- CONDIÇÃO DE ATIVAÇÃO: Somente se ESPEnabled for TRUE
+        if Settings.ESPEnabled and char and char:FindFirstChild("HumanoidRootPart") and char.Humanoid.Health > 0 then
             local hrp = char.HumanoidRootPart
             local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
             
@@ -222,12 +175,15 @@ RunService.RenderStepped:Connect(function()
             o.text.Visible = Settings.ESPNames and onScreen
             
             if onScreen then
-                local color = Settings.ESPRainbow and rainbow or Color3.new(1,1,1)
-                o.line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y); o.line.To = Vector2.new(pos.X, pos.Y); o.line.Color = color
-                o.text.Position = Vector2.new(pos.X, pos.Y - 20); o.text.Text = plr.Name; o.text.Color = color
+                o.line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                o.line.To = Vector2.new(pos.X, pos.Y); o.line.Color = color
+                o.text.Position = Vector2.new(pos.X, pos.Y - 20)
+                o.text.Text = plr.Name .. " [" .. math.floor(char.Humanoid.Health) .. "HP]"
+                o.text.Color = color
             end
         else
-            o.line.Visible = false; o.text.Visible = false
+            o.line.Visible = false
+            o.text.Visible = false
         end
     end
 end)
